@@ -15,7 +15,6 @@ struct c_config
 	color weapon_esp_color{};
 	bool enable_health_esp = true;
 	color health_esp_color{};
-	bool enable_auto_weapon_color = true;
 	bool enable_auto_healthbar_color = true;
 	float max_esp_distance = 300.f;
 
@@ -33,5 +32,11 @@ struct c_config
 	bool draw_fov = true;
 	color fov_color{};
 	bool aimbot_keep_target = true;
+
+	bool no_recoil = false;
+	bool no_spread = false;
+	bool no_sway = false;
+	bool instant_reload = false;
+	bool always_day = true;
 	
 }; inline c_config config;

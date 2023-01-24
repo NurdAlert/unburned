@@ -374,11 +374,13 @@ void c_menu::render()
 
     ImGui::SetNextWindowPos(ImVec2(window_pos.x, window_pos.y), ImGuiCond_Once);
     ImGui::SetNextWindowSize(ImVec2(window_size.x, window_size.y), ImGuiCond_Once);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(window_size.x, window_size.y), ImVec2(9999, 9999));
     ImGui::SetNextWindowBgAlpha(1.0f);
 
     ImGui::PushStyleColor(ImGuiCol_CheckMark, AccentColor.x());
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, AccentColor.x());
     ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, AccentColor.x());
+    ImGui::PushStyleColor(ImGuiCol_SeparatorActive, AccentColor.x());
 
     ImGui::Begin("rellant", NULL, window_flags);
     {
@@ -448,13 +450,15 @@ void c_menu::render()
             ImGui::SameLine();
             ImGui::Colorpicker("box esp color", &config.box_esp_color);
             ImGui::Checkbox("enable health esp", &config.enable_health_esp);
-            ImGui::SameLine();
-            ImGui::Colorpicker("health esp color", &config.health_esp_color);
+            if (!config.enable_auto_healthbar_color)
+            {
+                ImGui::SameLine();
+                ImGui::Colorpicker("health esp color", &config.health_esp_color);
+            }
             ImGui::Checkbox("dynamic health colors", &config.enable_auto_healthbar_color);
             ImGui::Checkbox("enable weapon esp", &config.enable_weapon_esp);
             ImGui::SameLine();
             ImGui::Colorpicker("weapon esp color", &config.weapon_esp_color);
-            ImGui::Checkbox("dynamic weapon colors", &config.enable_auto_weapon_color);
             ImGui::Checkbox("enable distance esp", &config.enable_distance_esp);
             ImGui::Checkbox("enable name esp", &config.enable_name_esp);
             ImGui::SameLine();
@@ -476,7 +480,16 @@ void c_menu::render()
             ImGui::Text("menu bind");
             ImGui::SameLine();
             ImGui::Keybind(&config.menu_bind, ImVec2(60, 16));
-            if (ImGui::Button("exit", ImVec2(150, 30)))
+            ImGui::PushFlagged();
+            ImGui::Checkbox("always day", &config.always_day);
+            ImGui::PopFlagged();
+            ImGui::Checkbox("no recoil", &config.no_recoil);
+            ImGui::Checkbox("instant reload", &config.instant_reload);
+            ImGui::PushFlagged();
+            ImGui::Checkbox("no spread", &config.no_spread);
+            ImGui::PopFlagged();
+            ImGui::Checkbox("no sway", &config.no_sway);
+            if (ImGui::Button("exit", ImVec2(100, 30)))
                 exit(0);
 
             break;
@@ -494,7 +507,7 @@ void c_menu::render()
     }
     ImGui::End();
 
-    ImGui::PopStyleColor(3);
+    ImGui::PopStyleColor(4);
 
 }
 

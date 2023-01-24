@@ -2936,6 +2936,8 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     if (window->SkipItems)
         return false;
 
+    flags |= ImGuiSliderFlags_AlwaysClamp;
+
     ImGuiContext& g = *GImGui;
     const ImGuiStyle& style = g.Style;
     const ImGuiID id = window->GetID(label);
@@ -2973,9 +2975,10 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
 
     char value_buf[64];
     const char* value_buf_end = value_buf + DataTypeFormatString(value_buf, IM_ARRAYSIZE(value_buf), data_type, p_data, format);
-
+    
+    window->DrawList->AddRectFilled(frame_bb.Min, frame_bb.Max, IM_COL32(33, 33, 33, 255));
     window->DrawList->AddRect(frame_bb.Min, frame_bb.Max, IM_COL32_BLACK);
-    window->DrawList->AddRectFilledMultiColor(frame_bb.Min+ImVec2(1, 1), ImVec2(grab_bb.Max.x, frame_bb.Max.y-1), IM_COL32(24, 24, 24, 255), menu.AccentColor.c(), menu.AccentColor.c(), IM_COL32(24, 24, 24, 255));
+    window->DrawList->AddRectFilledMultiColor(frame_bb.Min+ImVec2(1, 1), ImVec2(grab_bb.Max.x+1.f, frame_bb.Max.y-1), IM_COL32(24, 24, 24, 255), menu.AccentColor.c(), menu.AccentColor.c(), IM_COL32(24, 24, 24, 255));
 
     ImGui::PushFontShadow(IM_COL32(0, 0, 0, 255));
     if (clicked)

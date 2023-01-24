@@ -29,6 +29,9 @@ namespace unity_classes
 	inline mono_class_t* itemregion;
 	inline mono_class_t* itemdrop;
 	inline mono_class_t* itemdata;
+	inline mono_class_t* lightingmanager;
+	inline mono_class_t* itemweaponasset;
+	inline mono_class_t* itemgunasset;
 
 	void init()
 	{
@@ -49,6 +52,9 @@ namespace unity_classes
 		itemregion = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemRegion");
 		itemdrop = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemDrop");
 		itemdata = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemData");
+		lightingmanager = mono::find_class("Assembly-CSharp", "SDG.Unturned.LightingManager");
+		itemweaponasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemWeaponAsset");
+		itemgunasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.LightingManager");
 	}
 }
 
@@ -96,6 +102,22 @@ namespace class_offsets
 	inline int drops;
 	inline int itemmodel;
 	inline int height;
+	inline int playerlook_aim;
+	inline int time;
+	inline int range;
+	inline int ballistic_drop;
+	inline int ballistic_force;
+	inline int ballistic_steps;
+	inline int ballistic_travel;
+	inline int projectile_lifespan;
+	inline int isbusy;
+	inline int aim_duration;
+	inline int can_aim_during_sprint;
+	inline int reload_time;
+	inline int recoil_min_x;
+	inline int recoil_max_x;
+	inline int recoil_min_y;
+	inline int recoil_max_y;
 
 	void init()
 	{
@@ -141,6 +163,10 @@ namespace class_offsets
 		offset(unity_classes::itemregion, drops, "_drops");
 		offset(unity_classes::itemdrop, itemmodel, "_model");
 		offset(unity_classes::playermovement, height, "height");
+		offset(unity_classes::playerlook, playerlook_aim, "_aim");
+		offset(unity_classes::lightingmanager, time, "_time");
+		offset(unity_classes::itemweaponasset, range, "range");
+		offset(unity_classes::playerequipment, isbusy, "isBusy");
 	}
 }
 
@@ -174,23 +200,17 @@ namespace unity
 		{
 			return vec3(x - v.x, y - v.y, z - v.z);
 		}
+		vec3 operator+(const vec3& v) const
+		{
+			return vec3(x + v.x, y + v.y, z + v.z);
+		}
 		vec3 operator*(float v) const
 		{
 			return vec3(x * v, y * v, z * v);
 		}
 		vec3 clamp()
 		{
-			if (x < -89.0f)
-				x = -89.0f;
 
-			if (x > 89.0f)
-				x = 89.0f;
-
-			while (y < -180.0f)
-				y += 360.0f;
-
-			while (y > 180.0f)
-				y -= 360.0f;
 
 			z = 0.0f;
 			return *this;
@@ -243,9 +263,9 @@ namespace unity
 
 		return true;
 	}
-	vec3 calcangle(const vec3& src, const vec3& dst) 
+	vec3 calcangle(const vec3& src, const vec3& dst)
 	{
-		#define M_RADPI 57.295779513082f
+#define M_RADPI 57.295779513082f
 		vec3 vecDiff = dst - src;
 		return vec3(std::atan2(-vecDiff.z, vecDiff.length2d()) * M_RADPI, std::atan2(vecDiff.y, vecDiff.x) * M_RADPI, 0.0f);
 	}
@@ -412,8 +432,8 @@ enum ELimb
 struct unity_list_t
 {
 	get_member(uint32_t, size, 0x18)
-	get_member(uintptr_t, internal_list, 0x10)
-	uintptr_t list()
+		get_member(uintptr_t, internal_list, 0x10)
+		uintptr_t list()
 	{
 		return internal_list() + 0x20;
 	}
@@ -506,6 +526,38 @@ struct unity_transform_t
 	}
 };
 
+struct internal_transform_t
+{
+	get_member(unity::vec3, position, 0x90)
+};
+
+struct game_object_t
+{
+	unity::vec3 position()
+	{
+		auto component_array = memory.read<uintptr_t>(cast_this + 0x30);
+		auto transform_component = memory.read<uintptr_t>(component_array + 0x8);
+		auto internal_transform = memory.read<uintptr_t>(transform_component + 0x38);
+		auto transform_position = memory.read<unity::vec3>(internal_transform + 0x90);
+		return transform_position;
+	}
+	internal_transform_t* transform()
+	{
+		auto component_array = memory.read<uintptr_t>(cast_this + 0x30);
+		auto transform_component = memory.read<uintptr_t>(component_array + 0x8);
+		auto internal_transform = memory.read<internal_transform_t*>(transform_component + 0x38);
+		return internal_transform;
+	}
+};
+
+struct mono_behaviour_t
+{
+	auto game_object()
+	{
+		return memory.read<game_object_t*>(memory.read<uintptr_t>(cast_this + 0x10) + 0x30);
+	}
+};
+
 struct player_movement_t
 {
 	static auto get_instance() -> player_movement_t*
@@ -551,6 +603,17 @@ struct player_look_t
 	member(float, character_height, class_offsets::character_height)
 	member(float, character_yaw, class_offsets::character_yaw)
 	get_member(uintptr_t, character_camera, class_offsets::character_camera)
+	get_member(unity_transform_t*, aim, class_offsets::playerlook_aim)
+};
+
+struct lighting_manager_t
+{
+	static auto get_instance() -> lighting_manager_t*
+	{
+		static auto instance = (lighting_manager_t*)unity_classes::lightingmanager->get_vtable(mono::get_root_domain())->get_static_field_data();
+		return instance;
+	}
+	member(UINT, time, class_offsets::time);
 };
 
 struct item_asset_t
@@ -578,6 +641,16 @@ struct item_asset_t
 	get_member(EItemRarity, rarity, class_offsets::rarity)
 	get_member(EItemType, type, class_offsets::type)
 	get_member(uintptr_t, item, class_offsets::item)
+};
+
+struct item_weapon_asset : item_asset_t
+{
+
+};
+
+struct item_gun_asset : item_weapon_asset
+{
+
 };
 
 struct player_equipment_t
@@ -616,18 +689,8 @@ struct item_manager_t
 		return instance;
 	}
 	get_member(item_manager_t*, manager, class_offsets::manager)
-	get_member(unity_list_t*, clamped_items, class_offsets::clampeditems)
-	get_member(unity_list_t*, item_regions, class_offsets::itemregions)
-};
-
-struct item_weapon_asset : item_asset_t
-{
-
-};
-
-struct item_gun_asset : item_weapon_asset
-{
-
+		get_member(unity_list_t*, clamped_items, class_offsets::clampeditems)
+		get_member(unity_list_t*, item_regions, class_offsets::itemregions)
 };
 
 struct human_clothes_t
@@ -640,7 +703,7 @@ struct player_clothing_t
 	get_member(human_clothes_t*, human_clothes, class_offsets::characterclothes)
 };
 
-struct player_t
+struct player_t : mono_behaviour_t
 {
 	static auto get_instance() -> player_t*
 	{
@@ -671,8 +734,8 @@ struct steam_player_id_t
 struct steam_player_t
 {
 	get_member(player_t*, player, class_offsets::player)
-	get_member(steam_player_id_t*, player_id, class_offsets::player_id)
-	get_member(unity_transform_t*, model, class_offsets::model)
+		get_member(steam_player_id_t*, player_id, class_offsets::player_id)
+		get_member(unity_transform_t*, model, class_offsets::model)
 };
 
 struct provider_t
@@ -683,8 +746,8 @@ struct provider_t
 		return instance;
 	}
 	get_member(unity_list_t*, clients, class_offsets::clients)
-	get_member(byte, max_clients, class_offsets::max_players)
-	get_member(bool, is_connected, class_offsets::is_connected)
+		get_member(byte, max_clients, class_offsets::max_players)
+		get_member(bool, is_connected, class_offsets::is_connected)
 };
 
 struct main_camera_t
@@ -697,6 +760,71 @@ struct main_camera_t
 	get_member(uintptr_t, instance, class_offsets::camera_instance)
 };
 
+struct base_object_t
+{
+	uint64_t previousObjectLink; //0x0000
+	uint64_t nextObjectLink; //0x0008
+	uint64_t object; //0x0010
+};
+
+struct game_object_manager_t
+{
+	uint64_t lastTaggedObject; //0x0
+	uint64_t taggedObjects; //0x8
+	uint64_t lastMainCameraTagged; // 0x10
+	uint64_t MainCameraTagged; // 0x18
+	uint64_t lastActiveObject; //0x20
+	uint64_t activeObjects; // 0x28
+};
+
+template <class type>
+std::vector<type> get_active_objects(const char* object_name)
+{
+
+	auto camera_objects = memory.read<std::array<uintptr_t, 2>>(memory.gom + offsetof(game_object_manager_t, game_object_manager_t::lastTaggedObject));
+	std::vector<type> tmp_return{};
+
+	char name[256];
+	uintptr_t class_name_ptr = 0x00;
+
+	base_object_t activeObject = memory.read<base_object_t>(camera_objects[1]);
+	base_object_t lastObject = memory.read<base_object_t>(camera_objects[0]);
+
+	if (activeObject.object)
+	{
+		while (activeObject.object != 0 && activeObject.object != lastObject.object)
+		{
+			class_name_ptr = memory.read<uintptr_t>(activeObject.object + 0x60);
+			memory.read(class_name_ptr + 0x0, &name, sizeof(name));
+			std::cout << "tagged obj: " << name << "\n";
+			if (strcmp(name, object_name) == 0)
+			{
+				auto unk1 = memory.read<uintptr_t>(activeObject.object + 0x30);
+				auto unk2 = memory.read<uintptr_t>(unk1 + 0x18);
+				tmp_return.emplace_back(memory.read<type>(unk2 + 0x28));
+			}
+
+			activeObject = memory.read<base_object_t>(activeObject.nextObjectLink);
+		}
+		return tmp_return;
+	}
+
+	//if (lastObject.object)
+	//{
+	//	class_name_ptr = memory.read<uint64_t>(lastObject.object + 0x60);
+	//	memory.read(class_name_ptr + 0x0, name, 256);
+
+	//	if (strcmp(name, _("GameWorld")) == 0)
+	//	{
+	//		auto unk1 = memory.read<uintptr_t>(lastObject.object + 0x30);
+	//		auto unk2 = memory.read<uintptr_t>(unk1 + 0x18);
+	//		return memory.read<World*>(unk2 + 0x28);
+	//	}
+	//}
+	return std::vector<type>{};
+
+}
+
 struct cached_player_t
 {
 	steam_player_t* steamplayer;
@@ -705,6 +833,7 @@ struct cached_player_t
 	player_look_t* playerlook;
 	human_clothes_t* clothes;
 	player_movement_t* movement;
+	internal_transform_t* transform;
 	std::string name;
 	std::string weapon_name;
 };

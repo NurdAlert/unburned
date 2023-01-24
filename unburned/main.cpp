@@ -56,6 +56,7 @@ void entity_thread()
 				cached_local.player = local_player;
 				cached_local.playerlife = local_player->life();
 				cached_local.playerlook = local_player->look();
+				cached_local.transform = local_player->game_object()->transform();
 
 				for (const auto& client : client_list)
 				{
@@ -76,16 +77,7 @@ void entity_thread()
 
 					}
 
-					cached_player_t cached_player;
-					cached_player.player = player;
-					cached_player.steamplayer = client;
-					cached_player.playerlife = player->life();
-					cached_player.playerlook = player->look();
-					cached_player.name = client->player_id()->character_name();
-					cached_player.weapon_name = player->equipment()->asset()->item_name();
-					cached_player.movement = player->movement();
-					
-					tmp_cache.push_back(cached_player);
+					tmp_cache.emplace_back<cached_player_t>({ client, player, player->life(), player->look(), nullptr, player->movement(), player->game_object()->transform(), client->player_id()->character_name(), player->equipment()->asset()->item_name() });
 
 				}
 
@@ -126,13 +118,15 @@ inline void DrawHealth(int health, ImVec2 pos, ImVec2 size, float alpha, bool do
 {
 
 	int max_health = 100;
-	health = std::clamp(health, 0, 100);
+	//health = std::clamp(health, 0, 100);
 	float health_ratio = health / (float)max_health;
 
 	int offset = size.x - 2;
 	offset -= (offset * health_ratio);
 
 	ImColor color = dormant ? ImColor(52, 204, 235, int(200 * alpha)) : ImColor(int(244 - (116 * health_ratio)), int(100 + (144 * health_ratio)), 66, int(220 * alpha));
+	if (!config.enable_auto_healthbar_color)
+		color = config.health_esp_color.c();
 
 	ImRenderer->DrawFilledRect(ImVec2(pos.x - 5, pos.y), ImVec2(4, size.x), ImColor(0, 0, 0, int(130 * alpha)));
 	ImRenderer->DrawFilledRect(ImVec2(pos.x - 4, pos.y + 1 + offset), ImVec2(2, size.x - 2 - offset), color);
@@ -267,6 +261,7 @@ int main()
 
 #ifndef MENU_TESTING
 	memory.mono = memory.get_module(L"mono-2.0-bdwgc.dll");
+	memory.unity = memory.get_module(L"UnityPlayer.dll");
 #endif
 
 	SetWindowLongA(c_overlay->GetLocalHwnd(), GWL_EXSTYLE, WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW);
@@ -281,7 +276,7 @@ int main()
 	mono::init();
 	unity_classes::init();
 	class_offsets::init();
-
+	memory.gom = memory.read<uintptr_t>(memory.unity + 0x19F50B8);
 	CreateThread(NULL, NULL, LPTHREAD_START_ROUTINE(entity_thread), NULL, NULL, NULL);
 #endif
 
@@ -291,11 +286,10 @@ int main()
 		if (!FindWindowA(NULL, "Unturned"))
 			exit(0);
 
-		if (config.menu_bind.enabled)
-			menu.opened = !menu.opened;
-
 		for (const auto& keybind : keybinds)
 			keybind->update();
+
+		menu.opened = config.menu_bind.enabled;
 
 		if (PeekMessageA(&msg, c_overlay->GetLocalHwnd(), 0, 0, PM_REMOVE))
 		{
@@ -357,7 +351,14 @@ int main()
 				change_click(false);
 		}
 
-		ImRenderer->DrawTextGui(std::string("FPS: " + std::to_string(ImGui::GetIO().Framerate)), ImVec2(5, 5), 11.f, ImColor(125, 255, 255, 255), false, nullptr);
+		std::stringstream ss;
+		ss << "rellant.dev / fps: " << static_cast<int>(ImGui::GetIO().Framerate);
+		ImGui::SetNextWindowPos(ImVec2(5, 5));
+		ImGui::SetNextWindowSize(ImVec2(ImGui::CalcTextSize(ss.str().c_str()).x + 15, 25));
+		ImGui::Begin("watermark", NULL, menu.window_flags);
+		ImGui::TextColored(menu.AccentColor.x(), ss.str().c_str());
+		ImGui::End();
+
 		if (config.draw_fov)
 		{
 			static auto center = ImVec2(c_overlay->m_pWidth / 2, c_overlay->m_pHeight / 2);
@@ -372,12 +373,13 @@ int main()
 		for (const auto& player : cheat::players)
 		{
 
-			if (player.movement->last_update_pos().distance(unity::camera.position) > config.max_esp_distance)
+			unity::vec3 base_pos = player.player->game_object()->position();
+
+			if (base_pos.distance(unity::camera.position) > config.max_esp_distance)
 				continue;
 
-			unity::vec3 base_pos = player.steamplayer->model()->position();
-			unity::vec3 head_pos = base_pos;
-			head_pos.y += player.movement->get_height();
+			unity::vec3 head_pos = base_pos + player.playerlook->aim()->position();
+			//head_pos.y += player.movement->get_height();
 
 			ImVec2 base_screen;
 			ImVec2 head_screen;
@@ -455,31 +457,51 @@ int main()
 				if (!(target.fov > config.aimbot_fov))
 				{
 
-					unity::vec3 base_pos = target.player.steamplayer->model()->position();
-					unity::vec3 head_pos = base_pos;
-					head_pos.y += (target.player.movement->get_height()-0.2f);
-					auto ang = calculate_angle(unity::camera.position, head_pos);
-					auto look = cheat::local_player.playerlook;
-					look->yaw(ang.x);
-					
-					float x = ang.y;
+					unity::vec3 base_pos = target.player.transform->position();
+					unity::vec3 head_pos = base_pos + target.player.playerlook->aim()->position();
 
-					if (x <= 90.f && x <= 270.f)
+					if (config.aimbot_type == 0) // memory
 					{
-						x += 90.f;
-					}
-					else if (x >= 270.f && x <= 360.f)
-					{
-						x -= 270.f;
-					}
 
-					look->pitch(x);
+						auto ang = calculate_angle((cheat::local_player.transform->position() + cheat::local_player.playerlook->aim()->position()), head_pos);
+						auto look = cheat::local_player.playerlook;
+						look->yaw(ang.x);
+
+						float x = ang.y;
+
+						if (x <= 90.f && x <= 270.f)
+						{
+							x += 90.f;
+						}
+						else if (x >= 270.f && x <= 360.f)
+						{
+							x -= 270.f;
+						}
+
+						look->pitch(x);
+
+					}
+					else if (config.aimbot_type == 1) // mouse
+					{
+
+						ImVec2 screen;
+						if (unity::world_to_screen(head_pos, screen))
+						{
+
+							MoveMouse(screen.x, screen.y, 1920, 1080);
+
+						}
+
+					}
 
 				}
 
 			}
 
 		}
+
+		if (config.always_day)
+			lighting_manager_t::get_instance()->time();
 
 		cheat::sync.unlock();
 #endif

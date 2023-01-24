@@ -13,7 +13,9 @@ private:
 public:
 
 	uintptr_t base;
+	uintptr_t unity;
 	uintptr_t mono;
+	uintptr_t gom;
 	HWND window;
 
 #ifdef NO_ANTICHEAT
