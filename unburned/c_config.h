@@ -28,6 +28,7 @@ struct c_config
 	float aimbot_smoothing = 20.f;
 	bool enable_smoothing = true;
 	int aimbot_type = 0; // memory->mouse
+	int aimbot_target_selection = 0; // fov->distance->auto
 	bool enable_prediction = false;
 	bool draw_fov = true;
 	color fov_color{};

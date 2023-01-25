@@ -32,6 +32,7 @@ namespace unity_classes
 	inline mono_class_t* lightingmanager;
 	inline mono_class_t* itemweaponasset;
 	inline mono_class_t* itemgunasset;
+	inline mono_class_t* playeranimator;
 
 	void init()
 	{
@@ -54,7 +55,8 @@ namespace unity_classes
 		itemdata = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemData");
 		lightingmanager = mono::find_class("Assembly-CSharp", "SDG.Unturned.LightingManager");
 		itemweaponasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemWeaponAsset");
-		itemgunasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.LightingManager");
+		itemgunasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemGunAsset");
+		playeranimator = mono::find_class("Assembly-CSharp", "SDG.Unturned.PlayerAnimator");
 	}
 }
 
@@ -118,6 +120,11 @@ namespace class_offsets
 	inline int recoil_max_x;
 	inline int recoil_min_y;
 	inline int recoil_max_y;
+	inline int lightingmanager;
+	inline int cycle;
+	inline int base_spread;
+	inline int sway;
+	inline int animator;
 
 	void init()
 	{
@@ -167,11 +174,32 @@ namespace class_offsets
 		offset(unity_classes::lightingmanager, time, "_time");
 		offset(unity_classes::itemweaponasset, range, "range");
 		offset(unity_classes::playerequipment, isbusy, "isBusy");
+		offset(unity_classes::itemgunasset, can_aim_during_sprint, "<canAimDuringSprint>k__BackingField");
+		offset(unity_classes::itemgunasset, ballistic_drop, "ballisticDrop");
+		offset(unity_classes::itemgunasset, ballistic_force, "ballisticForce");
+		offset(unity_classes::itemgunasset, ballistic_steps, "ballisticSteps");
+		offset(unity_classes::itemgunasset, ballistic_travel, "ballisticTravel");
+		offset(unity_classes::itemgunasset, projectile_lifespan, "projectileLifespan");
+		offset(unity_classes::itemgunasset, aim_duration, "<aimInDuration>k__BackingField");
+		offset(unity_classes::itemgunasset, reload_time, "reloadTime");
+		offset(unity_classes::itemgunasset, recoil_min_x, "recoilMin_x");
+		offset(unity_classes::itemgunasset, recoil_min_y, "recoilMin_y");
+		offset(unity_classes::itemgunasset, recoil_max_x, "recoilMax_x");
+		offset(unity_classes::itemgunasset, recoil_max_y, "recoilMax_y");
+		offset(unity_classes::lightingmanager, lightingmanager, "manager");
+		offset(unity_classes::lightingmanager, cycle, "_cycle");
+		offset(unity_classes::itemgunasset, base_spread, "<baseSpreadAngleRadians>k__BackingField");
+		offset(unity_classes::playeranimator, sway, "scopeSway");
+		offset(unity_classes::player, animator, "_animator");
 	}
 }
 
 namespace unity
 {
+	struct vec4
+	{
+		float x, y, z, w;
+	};
 	struct vec3
 	{
 		float x, y, z;
@@ -208,6 +236,14 @@ namespace unity
 		{
 			return vec3(x * v, y * v, z * v);
 		}
+		vec3 operator/(float v) const
+		{
+			return vec3(x / v, y / v, z / v);
+		}
+		vec3 operator*(const vec3& v) const
+		{
+			return vec3{ x * v.x, y * v.y, z * v.z };
+		}
 		vec3 clamp()
 		{
 
@@ -218,6 +254,18 @@ namespace unity
 		float length() const
 		{
 			return sqrt((x * x) + (y * y) + (z * z));
+		}
+		vec3 normalized() const
+		{
+			vec3 res = *this;
+			float l = res.length();
+
+			if (l)  //-V550
+				res = res / l;
+			else
+				res.x = res.y = res.z = 0.0f;
+
+			return res;
 		}
 	};
 
@@ -458,16 +506,11 @@ struct unity_transform_t
 			uint64_t transform_indices{};
 		};
 
-		struct vec4
-		{
-			float x, y, z, w;
-		};
-
 		struct matrix34_t
 		{
-			vec4 vec0{};
-			vec4 vec1{};
-			vec4 vec2{};
+			unity::vec4 vec0{};
+			unity::vec4 vec1{};
+			unity::vec4 vec2{};
 		};
 
 		__m128 result{};
@@ -566,10 +609,10 @@ struct player_movement_t
 		return instance;
 	}
 	member(unity::vec3, last_update_pos, class_offsets::lastupdatepos)
-	member(unity::vec3, velocity, class_offsets::velocity)
-	member(float, jump, class_offsets::jump)
-	get_member(EPlayerHeight, height, class_offsets::height)
-	float get_height()
+		member(unity::vec3, velocity, class_offsets::velocity)
+		member(float, jump, class_offsets::jump)
+		get_member(EPlayerHeight, height, class_offsets::height)
+		float get_height()
 	{
 		switch (height())
 		{
@@ -597,13 +640,13 @@ struct player_look_t
 		return instance;
 	}
 	member(float, orbit_yaw, class_offsets::orbit_yaw)
-	member(float, orbit_pitch, class_offsets::orbit_pitch)
-	member(float, yaw, class_offsets::yaw)
-	member(float, pitch, class_offsets::pitch)
-	member(float, character_height, class_offsets::character_height)
-	member(float, character_yaw, class_offsets::character_yaw)
-	get_member(uintptr_t, character_camera, class_offsets::character_camera)
-	get_member(unity_transform_t*, aim, class_offsets::playerlook_aim)
+		member(float, orbit_pitch, class_offsets::orbit_pitch)
+		member(float, yaw, class_offsets::yaw)
+		member(float, pitch, class_offsets::pitch)
+		member(float, character_height, class_offsets::character_height)
+		member(float, character_yaw, class_offsets::character_yaw)
+		get_member(uintptr_t, character_camera, class_offsets::character_camera)
+		get_member(unity_transform_t*, aim, class_offsets::playerlook_aim)
 };
 
 struct lighting_manager_t
@@ -613,7 +656,9 @@ struct lighting_manager_t
 		static auto instance = (lighting_manager_t*)unity_classes::lightingmanager->get_vtable(mono::get_root_domain())->get_static_field_data();
 		return instance;
 	}
+	get_member(lighting_manager_t*, manager, class_offsets::lightingmanager);
 	member(UINT, time, class_offsets::time);
+	member(UINT, cycle, class_offsets::cycle);
 };
 
 struct item_asset_t
@@ -639,23 +684,48 @@ struct item_asset_t
 		return memory.read_chain<unity::vec3>(item(), { 0x30, 0x8, 0x38, 0x90 });
 	}
 	get_member(EItemRarity, rarity, class_offsets::rarity)
-	get_member(EItemType, type, class_offsets::type)
-	get_member(uintptr_t, item, class_offsets::item)
+		get_member(EItemType, type, class_offsets::type)
+		get_member(uintptr_t, item, class_offsets::item)
 };
 
-struct item_weapon_asset : item_asset_t
+struct item_weapon_asset_t : item_asset_t
 {
-
+	member(float, range, class_offsets::range);
 };
 
-struct item_gun_asset : item_weapon_asset
+struct weapon_ballistic_information_t
 {
+	BYTE steps;
+	float travel, drop, force;
+	bool valid()
+	{
+		return travel > 0 && drop > 0 && force > 0 && steps > 0;
+	}
+};
 
+struct item_gun_asset_t : item_weapon_asset_t
+{
+	member(float, ballistic_drop, class_offsets::ballistic_drop);
+	member(float, ballistic_force, class_offsets::ballistic_force);
+	member(float, ballistic_steps, class_offsets::ballistic_steps);
+	member(float, ballistic_travel, class_offsets::ballistic_travel);
+	member(float, projectile_lifespan, class_offsets::projectile_lifespan);
+	member(float, aim_duration, class_offsets::aim_duration);
+	member(bool, can_aim_during_sprint, class_offsets::can_aim_during_sprint);
+	member(float, reload_time, class_offsets::reload_time);
+	member(float, recoil_min_x, class_offsets::recoil_min_x);
+	member(float, recoil_max_x, class_offsets::recoil_max_x);
+	member(float, recoil_min_y, class_offsets::recoil_min_y);
+	member(float, recoil_max_xy, class_offsets::recoil_max_y);
+	member(unity::vec4, recoil, class_offsets::recoil_min_x);
+	get_member(weapon_ballistic_information_t, ballistic_information, class_offsets::ballistic_steps);
+	member(float, base_spread, class_offsets::base_spread);
 };
 
 struct player_equipment_t
 {
 	get_member(item_asset_t*, asset, class_offsets::asset)
+		member(bool, is_busy, class_offsets::isbusy);
 };
 
 struct player_life_t
@@ -719,6 +789,7 @@ struct player_t : mono_behaviour_t
 	get_member(player_look_t*, look, class_offsets::look)
 	get_member(player_equipment_t*, equipment, class_offsets::equipment)
 	get_member(player_clothing_t*, clothing, class_offsets::clothing)
+	get_member(struct player_animator_t*, animator, class_offsets::animator)
 };
 
 struct steam_player_id_t
@@ -825,6 +896,11 @@ std::vector<type> get_active_objects(const char* object_name)
 
 }
 
+struct player_animator_t
+{
+	member(unity::vec3, scope_sway, class_offsets::sway);
+};
+
 struct cached_player_t
 {
 	steam_player_t* steamplayer;
@@ -834,6 +910,7 @@ struct cached_player_t
 	human_clothes_t* clothes;
 	player_movement_t* movement;
 	internal_transform_t* transform;
+	player_equipment_t* equipment;
 	std::string name;
 	std::string weapon_name;
 };

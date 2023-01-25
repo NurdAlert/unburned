@@ -57,6 +57,7 @@ void entity_thread()
 				cached_local.playerlife = local_player->life();
 				cached_local.playerlook = local_player->look();
 				cached_local.transform = local_player->game_object()->transform();
+				cached_local.equipment = local_player->equipment();
 
 				for (const auto& client : client_list)
 				{
@@ -77,7 +78,9 @@ void entity_thread()
 
 					}
 
-					tmp_cache.emplace_back<cached_player_t>({ client, player, player->life(), player->look(), nullptr, player->movement(), player->game_object()->transform(), client->player_id()->character_name(), player->equipment()->asset()->item_name() });
+					auto equipment = player->equipment();
+
+					tmp_cache.emplace_back<cached_player_t>({ client, player, player->life(), player->look(), nullptr, player->movement(), player->game_object()->transform(), equipment, client->player_id()->character_name(), equipment->asset()->item_name() });
 
 				}
 
@@ -252,7 +255,7 @@ int main()
 #endif
 
 #ifdef MENU_TESTING
-	memory.window = FindWindowA(NULL, "Unturned");
+	memory.window = FindWindowA(NULL, "Untitled - Notepad");
 #endif
 
 	ImRenderer = new GRenderer();
@@ -283,8 +286,10 @@ int main()
 	while (msg.message != WM_QUIT)
 	{
 
+#ifndef MENU_TESTING
 		if (!FindWindowA(NULL, "Unturned"))
 			exit(0);
+#endif
 
 		for (const auto& keybind : keybinds)
 			keybind->update();
@@ -370,6 +375,16 @@ int main()
 
 		std::vector<aimbot_target_t> targets;
 
+		//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+		//auto inf = gun->ballistic_information();
+		//std::cout << "drop: " << inf.drop << " travel: " << inf.travel << " steps: " << inf.steps << " force: " << inf.force << "\n";
+		////if (inf.valid())
+		//{
+		//	gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
+		//	gun->base_spread(0.f);
+		//	
+		//}
+
 		for (const auto& player : cheat::players)
 		{
 
@@ -432,6 +447,19 @@ int main()
 
 		}
 
+		auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+		if (gun)
+		{
+			auto inf = gun->ballistic_information();
+			if (inf.valid())
+			{
+				gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
+				gun->base_spread(0.f);
+				gun->aim_duration(0.f);
+				cheat::local_player.player->animator()->scope_sway(unity::vec3{ 0.f, 0.f, 0.f });
+			}
+		}
+
 		if (config.aimbot_bind.enabled)
 		{
 
@@ -443,11 +471,42 @@ int main()
 					return t1.fov < t2.fov;
 				};
 
-				auto predict_bullet_drop = [&](float pos, float bullet_speed, float bullet_gravity, float distance)
+				auto predict_bullet_drop = [&](unity::vec3 from, unity::vec3 pos, unity::vec3 velocity, weapon_ballistic_information_t inf)
 				{
-					float time = (distance / bullet_speed);
-					auto drop = 0.5f * bullet_gravity * time * time;
-					return pos + drop;
+
+					//return (from.distance(pos) / 10.f) + (inf.drop * inf.steps);
+					return 0.f;
+
+					//auto angle = calculate_angle(pos, from);
+					//angle = angle * unity::vec3{ 0, 0, 1 };
+
+					//auto dir = angle.normalized();
+					//auto _pos = from;
+					//float drop = 0.f;
+
+					//UINT bullet_ticks = 0;
+					//while (++bullet_ticks < inf.steps)
+					//{
+					//
+					//	_pos = _pos + (dir * inf.travel);
+					//	dir.y -= inf.drop;
+					//	dir = dir.normalized();
+
+					//	if (unity::vec3{ pos.x, 0.f, pos.z }.distance(unity::vec3{ from.x, 0.f, from.z }) < inf.travel)
+					//	{
+					//		drop = from.y - _pos.y;
+					//		break;
+					//	}
+
+					//}
+
+					//if (drop < 0.f)
+					//	drop -= drop * 2;
+					//else
+					//	drop = 0.f;
+
+					//return drop;
+
 				};
 
 				std::sort(targets.begin(), targets.end(), compare_target);
@@ -459,11 +518,16 @@ int main()
 
 					unity::vec3 base_pos = target.player.transform->position();
 					unity::vec3 head_pos = base_pos + target.player.playerlook->aim()->position();
+					auto local_head = (cheat::local_player.transform->position() + cheat::local_player.playerlook->aim()->position());
+					auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+					auto inf = gun->ballistic_information();
 
 					if (config.aimbot_type == 0) // memory
 					{
 
-						auto ang = calculate_angle((cheat::local_player.transform->position() + cheat::local_player.playerlook->aim()->position()), head_pos);
+						head_pos.y += predict_bullet_drop(local_head, head_pos, unity::vec3{}, inf);
+
+						auto ang = calculate_angle(local_head, head_pos);
 						auto look = cheat::local_player.playerlook;
 						look->yaw(ang.x);
 
@@ -501,7 +565,16 @@ int main()
 		}
 
 		if (config.always_day)
-			lighting_manager_t::get_instance()->time();
+		{
+			auto manager = lighting_manager_t::get_instance()->manager();
+			if (manager);
+			{
+				manager->time(9999u);
+				manager->cycle(1u);
+			}
+		}
+
+
 
 		cheat::sync.unlock();
 #endif

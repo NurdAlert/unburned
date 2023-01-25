@@ -440,6 +440,7 @@ void c_menu::render()
             ImGui::SameLine();
             ImGui::Colorpicker("fov color", &config.fov_color);
             ImGui::Checkbox("keep aimbot target", &config.aimbot_keep_target);
+            ImGui::Combo("selection type", &config.aimbot_target_selection, "fov\0distance\0auto");
             break;
 
         }
