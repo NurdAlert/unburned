@@ -32,6 +32,8 @@ namespace unity_classes
 	inline mono_class_t* lightingmanager;
 	inline mono_class_t* itemweaponasset;
 	inline mono_class_t* itemgunasset;
+	inline mono_class_t* usablegun;
+	inline mono_class_t* bulletinfo;
 
 	void init()
 	{
@@ -55,6 +57,8 @@ namespace unity_classes
 		lightingmanager = mono::find_class("Assembly-CSharp", "SDG.Unturned.LightingManager");
 		itemweaponasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemWeaponAsset");
 		itemgunasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemGunAsset");
+		usablegun = mono::find_class("Assembly-CSharp", "SDG.Unturned.UseableGun");
+		bulletinfo = mono::find_class("Assembly-CSharp", "SDG.Unturned.BulletInfo");
 	}
 }
 
@@ -121,6 +125,11 @@ namespace class_offsets
 	inline int lightingmanager;
 	inline int cycle;
 	inline int base_spread;
+	inline int ammo_per_shot;
+	inline int usable;
+	inline int bullets;
+	inline int bullet_origin;
+	inline int bullet_pos;
 
 	void init()
 	{
@@ -185,6 +194,11 @@ namespace class_offsets
 		offset(unity_classes::lightingmanager, lightingmanager, "manager");
 		offset(unity_classes::lightingmanager, cycle, "_cycle");
 		offset(unity_classes::itemgunasset, base_spread, "<baseSpreadAngleRadians>k__BackingField");
+		offset(unity_classes::itemgunasset, ammo_per_shot, "<ammoPerShot>k__BackingField");
+		offset(unity_classes::playerequipment, usable, "_useable");
+		offset(unity_classes::usablegun, bullets, "bullets");
+		offset(unity_classes::bulletinfo, bullet_origin, "origin");
+		offset(unity_classes::bulletinfo, bullet_pos, "pos");
 	}
 }
 
@@ -483,29 +497,30 @@ struct unity_list_t
 
 struct unity_transform_t
 {
+
+	struct transform_access_read_only_t
+	{
+		uint64_t transform_data{};
+	};
+
+	struct transform_data_t
+	{
+		uint64_t transform_array{};
+		uint64_t transform_indices{};
+	};
+
+	struct matrix34_t
+	{
+		unity::vec4 vec0{};
+		unity::vec4 vec1{};
+		unity::vec4 vec2{};
+	};
+
 	unity::vec3 __fastcall position()
 	{
 
 		if (!this)
 			return unity::vec3{};
-
-		struct transform_access_read_only_t
-		{
-			uint64_t transform_data{};
-		};
-
-		struct transform_data_t
-		{
-			uint64_t transform_array{};
-			uint64_t transform_indices{};
-		};
-
-		struct matrix34_t
-		{
-			unity::vec4 vec0{};
-			unity::vec4 vec1{};
-			unity::vec4 vec2{};
-		};
 
 		__m128 result{};
 
@@ -714,12 +729,30 @@ struct item_gun_asset_t : item_weapon_asset_t
 	member(unity::vec4, recoil, class_offsets::recoil_min_x);
 	get_member(weapon_ballistic_information_t, ballistic_information, class_offsets::ballistic_steps);
 	member(float, base_spread, class_offsets::base_spread);
+	member(BYTE, ammo_per_shot, class_offsets::ammo_per_shot);
+};
+
+struct bullet_info_t
+{
+	member(unity::vec3, origin, class_offsets::bullet_origin);
+	member(unity::vec3, pos, class_offsets::bullet_pos);
+};
+
+struct usable_t
+{
+
+};
+
+struct usable_gun_t : usable_t
+{
+	get_member(unity_list_t*, bullets, class_offsets::bullets)
 };
 
 struct player_equipment_t
 {
 	get_member(item_asset_t*, asset, class_offsets::asset)
 	member(bool, is_busy, class_offsets::isbusy);
+	get_member(usable_t*, usable, class_offsets::usable)
 };
 
 struct player_life_t

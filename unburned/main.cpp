@@ -375,15 +375,33 @@ int main()
 
 		std::vector<aimbot_target_t> targets;
 
-		//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-		//auto inf = gun->ballistic_information();
+		auto usable = cheat::local_player.equipment->usable();
+		if (usable)
+		{
+			auto usable_gun = (usable_gun_t*)usable;
+			auto bullets = usable_gun->bullets();
+			if (bullets)
+			{
+				std::vector<bullet_info_t*> bullet_list{};
+				memory.read_vec<bullet_info_t*>(bullets->list(), bullets->size());
+				ImRenderer->DrawTextGui("bullets: " + std::to_string(bullets->size()), ImVec2(200, 200), 12.f, ImColor(255, 0, 0, 255), false, nullptr);
+				for (const auto& bullet : memory.read_vec<bullet_info_t*>(bullets->list(), bullets->size()))
+				{
+					if (!bullet)
+						continue;
+					bullet->pos(unity::camera.position);
+				}
+			}
+		}
+
+		auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+		auto inf = gun->ballistic_information();
 		//std::cout << "drop: " << inf.drop << " travel: " << inf.travel << " steps: " << inf.steps << " force: " << inf.force << "\n";
-		////if (inf.valid())
-		//{
-		//	gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
-		//	gun->base_spread(0.f);
-		//	
-		//}
+		if (inf.valid())
+		{
+			gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
+			gun->base_spread(0.f);
+		}
 
 		for (const auto& player : cheat::players)
 		{
@@ -447,14 +465,14 @@ int main()
 
 		}
 
-		auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-		auto inf = gun->ballistic_information();
-		gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
-		gun->base_spread(0.f);
-		gun->reload_time(0.f);
-		cheat::local_player.equipment->is_busy(false);
-		gun->can_aim_during_sprint(true);
-		gun->aim_duration(0.f);
+		//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+		//auto inf = gun->ballistic_information();
+		//gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
+		//gun->base_spread(0.f);
+		//gun->reload_time(0.f);
+		//cheat::local_player.equipment->is_busy(false);
+		//gun->can_aim_during_sprint(true);
+		//gun->aim_duration(0.f);
 
 		if (config.aimbot_bind.enabled)
 		{
