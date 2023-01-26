@@ -4,7 +4,7 @@
 #include "menu/menu.h"
 #include "c_config.h"
 
-#define MENU_TESTING
+//#define MENU_TESTING
 
 COverlay* c_overlay = new COverlay();
 bool clickable = false;
@@ -243,6 +243,36 @@ unity::vec3 calculate_angle(const unity::vec3& origin, const unity::vec3& dest)
 	return ret * 57.29578f;
 }
 
+void feature_thread()
+{
+
+	while (true)
+	{
+
+		if (!provider_t::get_instance()->is_connected())
+			continue;
+
+		auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+		if (gun)
+		{
+
+			auto inf = gun->ballistic_information();
+			if (inf.valid())
+			{
+				gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
+				gun->base_spread(0.f);
+				gun->aim_duration(0.f);
+				cheat::local_player.player->animator()->scope_sway(unity::vec3{ 0.f, 0.f, 0.f });
+			}
+
+		}
+
+		Sleep(1000);
+
+	}
+
+}
+
 int main()
 {
 
@@ -276,11 +306,12 @@ int main()
 	std::cout << "Unturned base: " << std::hex << memory.base << "\nMono base: " << std::hex << memory.mono << "\n";
 #endif
 #ifndef MENU_TESTING
-	mono::init();
+	//mono::init();
 	unity_classes::init();
 	class_offsets::init();
 	memory.gom = memory.read<uintptr_t>(memory.unity + 0x19F50B8);
 	CreateThread(NULL, NULL, LPTHREAD_START_ROUTINE(entity_thread), NULL, NULL, NULL);
+	CreateThread(NULL, NULL, LPTHREAD_START_ROUTINE(feature_thread), NULL, NULL, NULL);
 #endif
 
 	while (msg.message != WM_QUIT)
@@ -447,18 +478,18 @@ int main()
 
 		}
 
-		auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-		if (gun)
-		{
-			auto inf = gun->ballistic_information();
-			if (inf.valid())
-			{
-				gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
-				gun->base_spread(0.f);
-				gun->aim_duration(0.f);
-				cheat::local_player.player->animator()->scope_sway(unity::vec3{ 0.f, 0.f, 0.f });
-			}
-		}
+		//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+		//if (gun)
+		//{
+		//	auto inf = gun->ballistic_information();
+		//	if (inf.valid())
+		//	{
+		//		gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
+		//		gun->base_spread(0.f);
+		//		gun->aim_duration(0.f);
+		//		cheat::local_player.player->animator()->scope_sway(unity::vec3{ 0.f, 0.f, 0.f });
+		//	}
+		//}
 
 		if (config.aimbot_bind.enabled)
 		{
@@ -519,13 +550,13 @@ int main()
 					unity::vec3 base_pos = target.player.transform->position();
 					unity::vec3 head_pos = base_pos + target.player.playerlook->aim()->position();
 					auto local_head = (cheat::local_player.transform->position() + cheat::local_player.playerlook->aim()->position());
-					auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-					auto inf = gun->ballistic_information();
+					//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+					//auto inf = gun->ballistic_information();
 
 					if (config.aimbot_type == 0) // memory
 					{
 
-						head_pos.y += predict_bullet_drop(local_head, head_pos, unity::vec3{}, inf);
+						//head_pos.y += predict_bullet_drop(local_head, head_pos, unity::vec3{}, inf);
 
 						auto ang = calculate_angle(local_head, head_pos);
 						auto look = cheat::local_player.playerlook;
@@ -548,11 +579,36 @@ int main()
 					else if (config.aimbot_type == 1) // mouse
 					{
 
-						ImVec2 screen;
-						if (unity::world_to_screen(head_pos, screen))
-						{
+						//ImVec2 screen;
+						//if (unity::world_to_screen(head_pos, screen))
+						//{
 
-							MoveMouse(screen.x, screen.y, 1920, 1080);
+						//	MoveMouse(screen.x, screen.y, 1920, 1080);
+
+						//}
+						auto usable = cheat::local_player.equipment->usable();
+						if (usable)
+						{
+							auto usable_gun = (usable_gun_t*)usable;
+							auto bullets = usable_gun->bullets();
+							if (bullets)
+							{
+
+								for (const auto& bullet : memory.read_vec<bullet_info_t*>(bullets->list(), bullets->size()))
+								{
+
+									if (!bullet)
+										continue;
+									bullet->pos(head_pos);
+
+								}
+
+								static auto center = ImVec2(c_overlay->m_pWidth / 2, c_overlay->m_pHeight / 2);
+								ImVec2 screen;
+								unity::world_to_screen(head_pos, screen);
+								ImRenderer->DrawLineEx(center, screen, ImColor(255, 255, 255, 255));
+
+							}
 
 						}
 

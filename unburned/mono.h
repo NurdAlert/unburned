@@ -85,6 +85,15 @@ struct mono_vtable_t {
 	}
 };
 
+struct cached_field_t
+{
+	std::string field_name;
+	mono_class_field_t* field;
+	uintptr_t klass;
+};
+
+inline std::vector<cached_field_t> field_cache{};
+
 struct mono_class_t {
 	OFFSET(num_fields(), int, 0x100)
 		OFFSET(runtime_info(), mono_class_runtime_info_t*, 0xd0)
@@ -166,6 +175,7 @@ struct mono_class_t {
 	}
 
 	mono_class_field_t* find_field(const char* field_name) {
+
 		for (auto i = 0; i < this->num_fields(); i++) {
 			const auto field = this->get_field(i);
 			if (!field)
@@ -273,34 +283,88 @@ namespace mono {
 		return reinterpret_cast<mono_assembly_t*>(data);
 	}
 
+	struct cached_class_t
+	{
+		std::string name;
+		mono_class_t* klass;
+	};
+
+	struct cached_assembly_info_t
+	{
+		std::string assembly_name;
+		std::vector<cached_class_t> classes;
+	};
+
+	inline std::vector<cached_assembly_info_t> cached_assemblies{};
+
 	inline mono_class_t* find_class(const char* assembly_name, const char* class_name) {
-		const auto root_domain = get_root_domain();
-		if (!root_domain)
-			return nullptr;
 
-		const auto domain_assembly = domain_assembly_open(root_domain, assembly_name);
-		if (!domain_assembly)
-			return nullptr;
+		
+		bool cache_hit = false;
 
-		const auto mono_image = domain_assembly->mono_image();
-		if (!mono_image)
-			return nullptr;
+		for (const auto& cached_assembly : cached_assemblies)
+		{
 
-		const auto table_info = mono_image->get_table_info(2);
-		if (!table_info)
-			return nullptr;
+			if (cached_assembly.assembly_name == assembly_name)
+			{
 
-		for (int i = 0; i < table_info->get_rows(); i++) {
-			const auto ptr = static_cast<mono_hash_table_t*>(reinterpret_cast<void*>(mono_image + 0x4C0))->lookup<mono_class_t>(reinterpret_cast<void*>(0x02000000 | i + 1));
-			if (!ptr)
-				continue;
+				cache_hit = true;
 
-			auto name = ptr->name();
-			if (!ptr->namespace_name().empty())
-				name = ptr->namespace_name().append(".").append(ptr->name());
+				for (const auto& klass : cached_assembly.classes)
+				{
 
-			if (!strcmp(name.c_str(), class_name))
-				return ptr;
+					if (klass.name == class_name)
+						return klass.klass;
+
+				}
+
+			}
+
+		}
+
+		if (!cache_hit)
+		{
+			
+			cached_assembly_info_t insertion_cache{};
+			insertion_cache.assembly_name = assembly_name;
+
+			static auto root_domain = get_root_domain();
+			if (!root_domain)
+				return nullptr;
+
+			const auto domain_assembly = domain_assembly_open(root_domain, assembly_name);
+			if (!domain_assembly)
+				return nullptr;
+
+			const auto mono_image = domain_assembly->mono_image();
+			if (!mono_image)
+				return nullptr;
+
+			const auto table_info = mono_image->get_table_info(2);
+			if (!table_info)
+				return nullptr;
+
+			mono_class_t* ret = nullptr;
+
+			for (int i = 0; i < table_info->get_rows(); i++) {
+				const auto ptr = static_cast<mono_hash_table_t*>(reinterpret_cast<void*>(mono_image + 0x4C0))->lookup<mono_class_t>(reinterpret_cast<void*>(0x02000000 | i + 1));
+				if (!ptr)
+					continue;
+
+				auto name = ptr->name();
+				if (!ptr->namespace_name().empty())
+					name = ptr->namespace_name().append(".").append(ptr->name());
+
+				cached_class_t cached_class{};
+				cached_class.name = name;
+				cached_class.klass = ptr;
+				insertion_cache.classes.push_back(cached_class);
+
+				if (!strcmp(name.c_str(), class_name))
+					ret = ptr;
+			}
+			cached_assemblies.push_back(insertion_cache);
+			return ret;
 		}
 
 		return nullptr;
