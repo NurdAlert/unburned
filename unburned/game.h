@@ -134,7 +134,7 @@ namespace class_offsets
 	inline int bullets;
 	inline int bullet_origin;
 	inline int bullet_pos;
-
+	inline int bullet_direction;
 
 	void init()
 	{
@@ -160,7 +160,7 @@ namespace class_offsets
 		offset(unity_classes::playermovement, lastupdatepos, "lastUpdatePos");
 		offset(unity_classes::steamplayer, player_id, "_playerID");
 		offset(unity_classes::steamplayerid, character_name, "_characterName");
-		offset(unity_classes::playerlife, health, "_health");
+		offset(unity_classes::playerlife, health, "lastHealth");
 		offset(unity_classes::playermovement, velocity, "velocity");
 		offset(unity_classes::playermovement, jump, "JUMP");
 		offset(unity_classes::player, equipment, "_equipment");
@@ -206,6 +206,7 @@ namespace class_offsets
 		offset(unity_classes::usablegun, bullets, "bullets");
 		offset(unity_classes::bulletinfo, bullet_origin, "origin");
 		offset(unity_classes::bulletinfo, bullet_pos, "pos");
+		offset(unity_classes::bulletinfo, bullet_direction, "dir");
 	}
 }
 
@@ -742,6 +743,7 @@ struct bullet_info_t
 {
 	member(unity::vec3, origin, class_offsets::bullet_origin);
 	member(unity::vec3, pos, class_offsets::bullet_pos);
+	member(unity::vec3, direction, class_offsets::bullet_direction);
 };
 
 struct usable_t

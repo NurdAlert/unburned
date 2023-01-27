@@ -102,7 +102,7 @@ void entity_thread()
 			cheat::sync.unlock();
 		}
 
-		Sleep(4000);
+		Sleep(1500);
 
 	}
 
@@ -406,26 +406,16 @@ int main()
 
 		std::vector<aimbot_target_t> targets;
 
-		//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-		//auto inf = gun->ballistic_information();
-		//std::cout << "drop: " << inf.drop << " travel: " << inf.travel << " steps: " << inf.steps << " force: " << inf.force << "\n";
-		////if (inf.valid())
-		//{
-		//	gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
-		//	gun->base_spread(0.f);
-		//	
-		//}
-
 		for (const auto& player : cheat::players)
 		{
 
-			unity::vec3 base_pos = player.player->game_object()->position();
+			unity::vec3 base_pos = player.transform->position();
 
 			if (base_pos.distance(unity::camera.position) > config.max_esp_distance)
 				continue;
 
-			unity::vec3 head_pos = base_pos + player.playerlook->aim()->position();
-			//head_pos.y += player.movement->get_height();
+			unity::vec3 head_pos = base_pos;
+			head_pos.y += player.movement->get_height();
 
 			ImVec2 base_screen;
 			ImVec2 head_screen;
@@ -548,17 +538,17 @@ int main()
 				{
 
 					unity::vec3 base_pos = target.player.transform->position();
-					unity::vec3 head_pos = base_pos + target.player.playerlook->aim()->position();
-					auto local_head = (cheat::local_player.transform->position() + cheat::local_player.playerlook->aim()->position());
+					unity::vec3 head_pos = base_pos;
+					head_pos.y += target.player.movement->get_height();
+					//auto local_head = (cheat::local_player.transform->position() + cheat::local_player.playerlook->aim()->position());
 					//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
 					//auto inf = gun->ballistic_information();
 
-					if (config.aimbot_type == 0) // memory
+					switch (config.aimbot_type)
 					{
-
-						//head_pos.y += predict_bullet_drop(local_head, head_pos, unity::vec3{}, inf);
-
-						auto ang = calculate_angle(local_head, head_pos);
+					case 0: // mem
+					{
+						auto ang = calculate_angle(unity::camera.position, head_pos);
 						auto look = cheat::local_player.playerlook;
 						look->yaw(ang.x);
 
@@ -574,18 +564,19 @@ int main()
 						}
 
 						look->pitch(x);
-
 					}
-					else if (config.aimbot_type == 1) // mouse
+					case 1: // mouse
 					{
+						ImVec2 screen;
+						if (unity::world_to_screen(head_pos, screen))
+						{
 
-						//ImVec2 screen;
-						//if (unity::world_to_screen(head_pos, screen))
-						//{
+							MoveMouse(screen.x, screen.y, 1920, 1080);
 
-						//	MoveMouse(screen.x, screen.y, 1920, 1080);
-
-						//}
+						}
+					}
+					case 2: // silent
+					{
 						auto usable = cheat::local_player.equipment->usable();
 						if (usable)
 						{
@@ -596,11 +587,8 @@ int main()
 
 								for (const auto& bullet : memory.read_vec<bullet_info_t*>(bullets->list(), bullets->size()))
 								{
-
-									if (!bullet)
-										continue;
-									bullet->pos(head_pos);
-
+									auto calc_dir = head_pos - bullet->origin();
+									bullet->direction(calc_dir.normalized());
 								}
 
 								static auto center = ImVec2(c_overlay->m_pWidth / 2, c_overlay->m_pHeight / 2);
@@ -611,7 +599,7 @@ int main()
 							}
 
 						}
-
+					}
 					}
 
 				}

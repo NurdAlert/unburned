@@ -432,7 +432,7 @@ void c_menu::render()
             ImGui::Checkbox("enable aimbot", &config.enable_aimbot);
             ImGui::SameLine();
             ImGui::Keybind(&config.aimbot_bind, ImVec2(60, 16));
-            ImGui::Combo("aimbot type", &config.aimbot_type, "memory\0mouse");
+            ImGui::Combo("aimbot type", &config.aimbot_type, "memory\0mouse\0silent");
             ImGui::SliderFloat("aimbot fov", &config.aimbot_fov, 1.f, 600.f, "%.2f");
             ImGui::Checkbox("enable smoothing", &config.enable_smoothing);
             ImGui::SliderFloat("aimbot smoothness", &config.aimbot_smoothing, 0.f, 100.f, "%.2f");
