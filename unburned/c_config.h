@@ -39,5 +39,10 @@ struct c_config
 	bool no_sway = false;
 	bool instant_reload = false;
 	bool always_day = true;
+	bool instant_aim = false;
+	bool sprint_in_shoot = false;
+	bool no_bullet_drop = false;
+
+	std::string username = "";
 	
 }; inline c_config config;

@@ -35,8 +35,9 @@ namespace unity_classes
 	inline mono_class_t* playeranimator;
 	inline mono_class_t* usablegun;
 	inline mono_class_t* bulletinfo;
+	inline mono_class_t* itembarrelasset;
 
-	void init()
+	static void init()
 	{
 		playermovement = mono::find_class("Assembly-CSharp", "SDG.Unturned.PlayerMovement");
 		playerlife = mono::find_class("Assembly-CSharp", "SDG.Unturned.PlayerLife");
@@ -61,6 +62,7 @@ namespace unity_classes
 		playeranimator = mono::find_class("Assembly-CSharp", "SDG.Unturned.PlayerAnimator");
 		usablegun = mono::find_class("Assembly-CSharp", "SDG.Unturned.UseableGun");
 		bulletinfo = mono::find_class("Assembly-CSharp", "SDG.Unturned.BulletInfo");
+		itembarrelasset = mono::find_class("Assembly-CSharp", "SDG.Unturned.ItemBarrelAsset");
 	}
 }
 
@@ -135,8 +137,10 @@ namespace class_offsets
 	inline int bullet_origin;
 	inline int bullet_pos;
 	inline int bullet_direction;
+	inline int ballistic_drop_barrel;
+	inline int barrel_asset;
 
-	void init()
+	static void init()
 	{
 		offset(unity_classes::provider, max_players, "_maxPlayers");
 		offset(unity_classes::provider, is_connected, "_isConnected");
@@ -207,6 +211,8 @@ namespace class_offsets
 		offset(unity_classes::bulletinfo, bullet_origin, "origin");
 		offset(unity_classes::bulletinfo, bullet_pos, "pos");
 		offset(unity_classes::bulletinfo, bullet_direction, "dir");
+		offset(unity_classes::itembarrelasset, ballistic_drop_barrel, "_ballisticDrop");
+		offset(unity_classes::itemgunasset, barrel_asset, "barrelAsset");
 	}
 }
 
@@ -306,7 +312,7 @@ namespace unity
 		vmatrix_t matrix;
 	}; inline camera_t camera;
 
-	bool world_to_screen(const vec3& entity_position, ImVec2& screen_position)
+	inline bool world_to_screen(const vec3& entity_position, ImVec2& screen_position)
 	{
 
 		vec3 transform{ camera.matrix._14, camera.matrix._24, camera.matrix._34 };
@@ -327,7 +333,7 @@ namespace unity
 
 		return true;
 	}
-	vec3 calcangle(const vec3& src, const vec3& dst)
+	inline vec3 calcangle(const vec3& src, const vec3& dst)
 	{
 #define M_RADPI 57.295779513082f
 		vec3 vecDiff = dst - src;
@@ -719,6 +725,11 @@ struct weapon_ballistic_information_t
 	}
 };
 
+struct item_barrel_asset_t : item_asset_t
+{
+	member(float, ballistic_drop, class_offsets::ballistic_drop_barrel);
+};
+
 struct item_gun_asset_t : item_weapon_asset_t
 {
 	member(float, ballistic_drop, class_offsets::ballistic_drop);
@@ -737,6 +748,7 @@ struct item_gun_asset_t : item_weapon_asset_t
 	get_member(weapon_ballistic_information_t, ballistic_information, class_offsets::ballistic_steps);
 	member(float, base_spread, class_offsets::base_spread);
 	member(BYTE, ammo_per_shot, class_offsets::ammo_per_shot);
+	member(item_barrel_asset_t*, barrel, class_offsets::barrel_asset);
 };
 
 struct bullet_info_t
@@ -961,7 +973,7 @@ struct aimbot_target_t
 
 namespace cheat
 {
-	std::vector<cached_player_t> players{};
-	cached_player_t local_player;
-	std::mutex sync{};
+	inline std::vector<cached_player_t> players{};
+	inline cached_player_t local_player;
+	inline std::mutex sync{};
 }

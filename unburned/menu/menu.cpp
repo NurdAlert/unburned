@@ -1,4 +1,6 @@
+#include "../c_features.h"
 #include "menu.h"
+
 
 struct tab
 {
@@ -6,7 +8,7 @@ struct tab
     int tab_id;
 };
 
-std::vector<tab> tabs{ {"aimbot", 0}, {"player esp", 1}, {"loot esp", 2}, {"miscellaneous", 3}, {"configs", 4} };
+std::vector<tab> tabs{ {"aimbot", 0}, {"player esp", 1}, {"miscellaneous", 3}, {"configs", 4} };
 int current_tab = 0;
 
 namespace ImGui
@@ -413,7 +415,12 @@ void c_menu::render()
 
         ImGui::SetCursorPos(ImVec2(5, ImGui::GetWindowSize().y - 16));
 
-        ImGui::Text("debug");
+#ifndef _DEBUG
+        if (config.username == "")
+            config.username.data()[30000] = 1;
+#endif
+
+        ImGui::Text(config.username.c_str());
 
         ImGui::PopFontShadow();
 
@@ -447,21 +454,14 @@ void c_menu::render()
         case 1: // player esp
         {
 
-            ImGui::Checkbox("enable box esp", &config.enable_box_esp);
+            if (ImGui::Checkbox("enable box esp", &config.enable_box_esp)) features::features.at(4)->on_interact();
             ImGui::SameLine();
             ImGui::Colorpicker("box esp color", &config.box_esp_color);
-            ImGui::Checkbox("enable health esp", &config.enable_health_esp);
-            if (!config.enable_auto_healthbar_color)
-            {
-                ImGui::SameLine();
-                ImGui::Colorpicker("health esp color", &config.health_esp_color);
-            }
-            ImGui::Checkbox("dynamic health colors", &config.enable_auto_healthbar_color);
-            ImGui::Checkbox("enable weapon esp", &config.enable_weapon_esp);
+            if (ImGui::Checkbox("enable weapon esp", &config.enable_weapon_esp)) features::features.at(6)->on_interact();
             ImGui::SameLine();
             ImGui::Colorpicker("weapon esp color", &config.weapon_esp_color);
-            ImGui::Checkbox("enable distance esp", &config.enable_distance_esp);
-            ImGui::Checkbox("enable name esp", &config.enable_name_esp);
+            if (ImGui::Checkbox("enable distance esp", &config.enable_distance_esp)) features::features.at(5)->on_interact();
+            if (ImGui::Checkbox("enable name esp", &config.enable_name_esp)) features::features.at(2)->on_interact();
             ImGui::SameLine();
             ImGui::Colorpicker("name esp color", &config.name_esp_color);
             ImGui::SliderFloat("max esp distance", &config.max_esp_distance, 10.f, 5000.f);
@@ -481,15 +481,22 @@ void c_menu::render()
             ImGui::Text("menu bind");
             ImGui::SameLine();
             ImGui::Keybind(&config.menu_bind, ImVec2(60, 16));
+            if (ImGui::Checkbox("no recoil", &config.no_recoil))
+                if (!config.no_recoil)
+                    features::no_recoil.on_disable();
+                else
+                    features::no_recoil.on_enable();
             ImGui::PushFlagged();
-            ImGui::Checkbox("always day", &config.always_day);
+            if (ImGui::Checkbox("no spread", &config.no_spread))
+                if (!config.no_spread)
+                    features::no_spread.on_disable();
+                else
+                    features::no_spread.on_enable();
             ImGui::PopFlagged();
-            ImGui::Checkbox("no recoil", &config.no_recoil);
-            ImGui::Checkbox("instant reload", &config.instant_reload);
-            ImGui::PushFlagged();
-            ImGui::Checkbox("no spread", &config.no_spread);
-            ImGui::PopFlagged();
-            ImGui::Checkbox("no sway", &config.no_sway);
+            if (ImGui::Checkbox("no sway", &config.no_sway)) features::features.at(7)->on_interact();
+            if (ImGui::Checkbox("sprint and aim", &config.sprint_in_shoot)) features::features.at(8)->on_interact();
+            if (ImGui::Checkbox("instant aim", &config.instant_aim)) features::features.at(9)->on_interact();
+            if (ImGui::Checkbox("no bullet drop", &config.no_bullet_drop)) features::features.at(10)->on_interact();
             if (ImGui::Button("exit", ImVec2(100, 30)))
                 exit(0);
 
@@ -498,6 +505,7 @@ void c_menu::render()
         }
         case 4: // configs
         {
+            ImGui::Text("coming soon :3");
             break;
         }
 

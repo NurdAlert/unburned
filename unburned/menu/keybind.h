@@ -216,7 +216,9 @@ public:
 
 		case TOGGLE:
 			if (GetAsyncKeyState(key) & 1)
+			{
 				enabled = !enabled;
+			}
 			break;
 		case HOLD:
 			enabled = GetAsyncKeyState(key);

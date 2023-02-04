@@ -57,6 +57,9 @@
     <ClCompile Include="Overlay\Overlay.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="kernel\driver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="c_memory.h">
@@ -282,6 +285,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="c_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="c_features.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel\driver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel\xorstr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel\defs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

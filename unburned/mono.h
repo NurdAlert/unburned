@@ -20,14 +20,14 @@ inline std::string read_widechar(const std::uintptr_t address, const std::size_t
 }
 
 inline std::wstring read_unicode(const std::uintptr_t address, const std::size_t size) {
-	const auto buffer = std::make_unique<wchar_t[]>(size*2);
+	const auto buffer = std::make_unique<wchar_t[]>(size * 2);
 	memory.read(address, buffer.get(), size);
 	return std::wstring(buffer.get());
 }
 
 struct glist_t {
 	OFFSET(data(), uintptr_t, 0x0)
-	OFFSET(next(), uintptr_t, 0x8)
+		OFFSET(next(), uintptr_t, 0x8)
 };
 
 struct mono_root_domain_t {
@@ -299,7 +299,7 @@ namespace mono {
 
 	inline mono_class_t* find_class(const char* assembly_name, const char* class_name) {
 
-		
+
 		bool cache_hit = false;
 
 		for (const auto& cached_assembly : cached_assemblies)
@@ -324,7 +324,7 @@ namespace mono {
 
 		if (!cache_hit)
 		{
-			
+
 			cached_assembly_info_t insertion_cache{};
 			insertion_cache.assembly_name = assembly_name;
 

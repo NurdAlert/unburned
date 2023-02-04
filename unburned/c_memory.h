@@ -2,8 +2,10 @@
 
 #include "includes.h"
 #include "HyperV/HyperV.h"
+#include "kernel/driver.h"
 
 //#define NO_ANTICHEAT
+#define USE_DRIVER
 #define WSTR_BUFFER_SIZE 1024
 
 class c_memory
@@ -20,18 +22,30 @@ public:
 
 #ifdef NO_ANTICHEAT
 	HANDLE process;
+#elif defined(USE_DRIVER)
+	kernel::driver driver{};
 #else
 	HyperV* hyperv = new HyperV();
 #endif
 
 	bool init()
 	{
+
 		window = FindWindowA("UnityWndClass", NULL);
+
+		while (!window)
+		{
+			window = FindWindowA("UnityWndClass", NULL);
+			Sleep(10000);
+		}
 
 		if (!GetWindowThreadProcessId(window, &process_id))
 			return false;
 #ifdef NO_ANTICHEAT
 		process = OpenProcess(PROCESS_ALL_ACCESS, NULL, process_id);
+#elif defined(USE_DRIVER)
+		driver.init();
+		driver.attach(process_id);
 #else
 		if (!hyperv->GetExtendProcCr3(process_id))
 			return false;
@@ -44,6 +58,8 @@ public:
 #endif
 #ifdef NO_ANTICHEAT
 		base = get_module(L"Unturned.exe");
+#elif defined(USE_DRIVER)
+		base = driver.get_process_base(process_id);
 #else
 		base = hyperv->GetProccessBase();
 #endif
@@ -58,6 +74,8 @@ public:
 		if (!ReadProcessMemory(process, (LPVOID)address, &buffer, sizeof(type), NULL))
 			return type{};
 		return buffer;
+#elif defined(USE_DRIVER)
+		return driver.read<type>(address);
 #else
 		return hyperv->ReadValue64<type>(address);
 #endif
@@ -67,6 +85,8 @@ public:
 	{
 #ifdef NO_ANTICHEAT
 		return ReadProcessMemory(process, (LPVOID)address, buffer, size, NULL);
+#elif defined(USE_DRIVER)
+		return driver.read_buffer(address, buffer, size);
 #else
 		return hyperv->ReadMem((PVOID)address, buffer, size);
 #endif
@@ -78,6 +98,9 @@ public:
 #ifdef NO_ANTICHEAT
 		if (!WriteProcessMemory(process, (LPVOID)address, &value, sizeof(type), NULL))
 			return false;
+		return true;
+#elif defined(USE_DRIVER)
+		driver.write<type>(address, value);
 		return true;
 #else
 		return hyperv->WriteValue64<type>(address, value);
@@ -135,6 +158,9 @@ public:
 			return NULL;
 		}
 		return NULL;
+#elif defined(USE_DRIVER)
+		auto tmp = std::wstring(module_name);
+		return driver.get_process_module(std::string(tmp.begin(), tmp.end()).c_str());
 #else
 		return hyperv->GetProcessModule(module_name);
 #endif

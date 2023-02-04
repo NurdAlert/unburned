@@ -26,7 +26,7 @@ public:
 	}
 	ImFont* GetBoldFont()
 	{
-		return m_pBold;
+		return m_pFont;
 	}
 
 	ImFont* getsmallfonts()

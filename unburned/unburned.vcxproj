@@ -46,7 +46,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -129,6 +129,8 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <CallingConvention>FastCall</CallingConvention>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,13 +152,16 @@
     <ClCompile Include="ImGui\imgui_impl_win32.cpp" />
     <ClCompile Include="ImGui\imgui_tables.cpp" />
     <ClCompile Include="ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="kernel\driver.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="menu\menu.cpp" />
     <ClCompile Include="Overlay\Overlay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="c_config.h" />
+    <ClInclude Include="c_features.h" />
     <ClInclude Include="c_memory.h" />
+    <ClInclude Include="font.h" />
     <ClInclude Include="freetype include\freetype\config\ftconfig.h" />
     <ClInclude Include="freetype include\freetype\config\ftheader.h" />
     <ClInclude Include="freetype include\freetype\config\ftmodule.h" />
@@ -226,6 +231,9 @@
     <ClInclude Include="ImGui\imstb_textedit.h" />
     <ClInclude Include="ImGui\imstb_truetype.h" />
     <ClInclude Include="includes.h" />
+    <ClInclude Include="kernel\defs.h" />
+    <ClInclude Include="kernel\driver.h" />
+    <ClInclude Include="kernel\xorstr.h" />
     <ClInclude Include="menu\keybind.h" />
     <ClInclude Include="menu\menu.h" />
     <ClInclude Include="mono.h" />

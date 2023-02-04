@@ -3,6 +3,7 @@
 #include "game.h"
 #include "menu/menu.h"
 #include "c_config.h"
+#include "c_features.h"
 
 //#define MENU_TESTING
 
@@ -243,37 +244,7 @@ unity::vec3 calculate_angle(const unity::vec3& origin, const unity::vec3& dest)
 	return ret * 57.29578f;
 }
 
-void feature_thread()
-{
-
-	while (true)
-	{
-
-		if (!provider_t::get_instance()->is_connected())
-			continue;
-
-		auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-		if (gun)
-		{
-
-			auto inf = gun->ballistic_information();
-			if (inf.valid())
-			{
-				gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
-				gun->base_spread(0.f);
-				gun->aim_duration(0.f);
-				cheat::local_player.player->animator()->scope_sway(unity::vec3{ 0.f, 0.f, 0.f });
-			}
-
-		}
-
-		Sleep(1000);
-
-	}
-
-}
-
-int main()
+int main_thread()
 {
 
 #ifndef MENU_TESTING
@@ -285,19 +256,26 @@ int main()
 #endif
 
 #ifdef MENU_TESTING
-	memory.window = FindWindowA(NULL, "Untitled - Notepad");
+	memory.window = FindWindowA(NULL, "Unturned");
 #endif
-
-	ImRenderer = new GRenderer();
-	if (!c_overlay->InitWindows(memory.window))
-		return 1;
 
 #ifndef MENU_TESTING
 	memory.mono = memory.get_module(L"mono-2.0-bdwgc.dll");
 	memory.unity = memory.get_module(L"UnityPlayer.dll");
 #endif
 
+	ImRenderer = new GRenderer();
+	if (!c_overlay->InitWindows(memory.window))
+		return 1;
+
 	SetWindowLongA(c_overlay->GetLocalHwnd(), GWL_EXSTYLE, WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW);
+
+#ifndef MENU_TESTING
+	//mono::init();
+	unity_classes::init();
+	class_offsets::init();
+	CreateThread(NULL, NULL, LPTHREAD_START_ROUTINE(entity_thread), NULL, NULL, NULL);
+#endif
 
 	RECT OldRc{};
 	MSG msg{};
@@ -305,14 +283,18 @@ int main()
 #ifdef _DEBUG
 	std::cout << "Unturned base: " << std::hex << memory.base << "\nMono base: " << std::hex << memory.mono << "\n";
 #endif
-#ifndef MENU_TESTING
-	//mono::init();
-	unity_classes::init();
-	class_offsets::init();
-	memory.gom = memory.read<uintptr_t>(memory.unity + 0x19F50B8);
-	CreateThread(NULL, NULL, LPTHREAD_START_ROUTINE(entity_thread), NULL, NULL, NULL);
-	CreateThread(NULL, NULL, LPTHREAD_START_ROUTINE(feature_thread), NULL, NULL, NULL);
-#endif
+
+#define CREATELOG(x, y, z) auto x = features::c_logged_feature(y, z)
+
+	CREATELOG(name_esp, "name esp", &config.enable_name_esp);
+	CREATELOG(aimbot_log, "aimbot key", &config.aimbot_bind.enabled);
+	CREATELOG(box_esp, "box esp", &config.enable_box_esp);
+	CREATELOG(distance_esp, "distance esp", &config.enable_distance_esp);
+	CREATELOG(weapon_esp, "weapon esp", &config.enable_weapon_esp);
+	CREATELOG(no_sway, "no sway", &config.no_sway);
+	CREATELOG(sprint_and_aim, "sprint and aim", &config.sprint_in_shoot);
+	CREATELOG(instant_aim, "instant aim", &config.instant_aim);
+	CREATELOG(no_bullet_drop, "no bullet drop", &config.no_bullet_drop);
 
 	while (msg.message != WM_QUIT)
 	{
@@ -364,10 +346,14 @@ int main()
 
 #ifndef MENU_TESTING
 		auto camera = main_camera_t::get_instance()->instance();
-		auto camera_obj = memory.read<uintptr_t>(camera + 0x10);
 
-		unity::camera.position = memory.read<unity::vec3>(camera_obj + 0x42C);
-		unity::camera.matrix = memory.read<unity::vmatrix_t>(camera_obj + 0x2E4);
+		if (camera)
+		{
+			auto camera_obj = memory.read<uintptr_t>(camera + 0x10);
+
+			unity::camera.position = memory.read<unity::vec3>(camera_obj + 0x42C);
+			unity::camera.matrix = memory.read<unity::vmatrix_t>(camera_obj + 0x2E4);
+		}
 #endif
 
 		for (const auto& color : registered_colors)
@@ -399,6 +385,32 @@ int main()
 		{
 			static auto center = ImVec2(c_overlay->m_pWidth / 2, c_overlay->m_pHeight / 2);
 			ImRenderer->DrawCircle(center, config.aimbot_fov, config.fov_color.c());
+		}
+
+		std::vector<std::tuple<int, std::string, double>> enabled_features{};
+		int hornyelephant = 0;
+
+		for (int i = 0; i < features::features.size(); i++)
+		{
+			if (features::features[i]->enabled)
+			{
+				hornyelephant++;
+				enabled_features.emplace_back<std::tuple<int, std::string, double>>({ hornyelephant, features::features[i]->name, features::features[i]->last_interact_time });
+			}
+			else if (!features::features[i]->enabled && features::features[i]->logged_value != nullptr)
+			{
+				if (!(*features::features[i]->logged_value))
+					continue;
+				hornyelephant++;
+				enabled_features.emplace_back<std::tuple<int, std::string, double>>({ hornyelephant, features::features[i]->name, features::features[i]->last_interact_time });
+			}
+		}
+
+		for (const auto& enabled_feature : enabled_features)
+		{
+			auto text_sz = ImRenderer->GetBoldFont()->CalcTextSizeA(22.f, FLT_MAX, 0.f, std::get<1>(enabled_feature).c_str());
+			auto pos = ImVec2((c_overlay->m_pWidth - text_sz.x) - 10, 0 + (25 * std::get<0>(enabled_feature)));
+			ImRenderer->DrawTextGui(std::get<1>(enabled_feature), pos, 22.f, ImColor(static_cast<int>(menu.AccentColor.r * 255.f), static_cast<int>(menu.AccentColor.g * 255.f), static_cast<int>(menu.AccentColor.b * 255), static_cast<int>((GetTickCount64() - std::get<2>(enabled_feature)) * 1.2f)), false, ImRenderer->GetBoldFont());
 		}
 
 #ifndef MENU_TESTING
@@ -448,8 +460,6 @@ int main()
 
 			if (config.enable_box_esp)
 				DrawBox(ImVec2(box_x, box_y), ImVec2(box_w, box_h), config.box_esp_color.c());
-			if (config.enable_health_esp)
-				DrawHealth(100.f, ImVec2(box_x + 9.f, box_y), ImVec2(box_h, box_w), 255.f, false);
 			if (config.enable_weapon_esp)
 				ImRenderer->DrawTextGui(player.weapon_name, ImVec2(head_screen.x, base_screen.y + 2.f), 11.f, config.weapon_esp_color.c(), true, nullptr);
 			ImRenderer->DrawTextGui(top_text, ImVec2(head_screen.x, head_screen.y - 14.f), 11.f, config.name_esp_color.c(), true, nullptr);
@@ -468,19 +478,6 @@ int main()
 
 		}
 
-		//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-		//if (gun)
-		//{
-		//	auto inf = gun->ballistic_information();
-		//	if (inf.valid())
-		//	{
-		//		gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
-		//		gun->base_spread(0.f);
-		//		gun->aim_duration(0.f);
-		//		cheat::local_player.player->animator()->scope_sway(unity::vec3{ 0.f, 0.f, 0.f });
-		//	}
-		//}
-
 		if (config.aimbot_bind.enabled)
 		{
 
@@ -492,44 +489,6 @@ int main()
 					return t1.fov < t2.fov;
 				};
 
-				auto predict_bullet_drop = [&](unity::vec3 from, unity::vec3 pos, unity::vec3 velocity, weapon_ballistic_information_t inf)
-				{
-
-					//return (from.distance(pos) / 10.f) + (inf.drop * inf.steps);
-					return 0.f;
-
-					//auto angle = calculate_angle(pos, from);
-					//angle = angle * unity::vec3{ 0, 0, 1 };
-
-					//auto dir = angle.normalized();
-					//auto _pos = from;
-					//float drop = 0.f;
-
-					//UINT bullet_ticks = 0;
-					//while (++bullet_ticks < inf.steps)
-					//{
-					//
-					//	_pos = _pos + (dir * inf.travel);
-					//	dir.y -= inf.drop;
-					//	dir = dir.normalized();
-
-					//	if (unity::vec3{ pos.x, 0.f, pos.z }.distance(unity::vec3{ from.x, 0.f, from.z }) < inf.travel)
-					//	{
-					//		drop = from.y - _pos.y;
-					//		break;
-					//	}
-
-					//}
-
-					//if (drop < 0.f)
-					//	drop -= drop * 2;
-					//else
-					//	drop = 0.f;
-
-					//return drop;
-
-				};
-
 				std::sort(targets.begin(), targets.end(), compare_target);
 
 				aimbot_target_t target = targets.at(0);
@@ -539,67 +498,59 @@ int main()
 
 					unity::vec3 base_pos = target.player.transform->position();
 					unity::vec3 head_pos = base_pos;
-					head_pos.y += target.player.movement->get_height();
-					//auto local_head = (cheat::local_player.transform->position() + cheat::local_player.playerlook->aim()->position());
-					//auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
-					//auto inf = gun->ballistic_information();
+					head_pos.y += target.player.movement->get_height()-0.2f;
 
 					switch (config.aimbot_type)
 					{
-					case 0: // mem
-					{
-						auto ang = calculate_angle(unity::camera.position, head_pos);
-						auto look = cheat::local_player.playerlook;
-						look->yaw(ang.x);
-
-						float x = ang.y;
-
-						if (x <= 90.f && x <= 270.f)
+						case 0: // mem
 						{
-							x += 90.f;
+							auto ang = calculate_angle(unity::camera.position, head_pos);
+							auto look = cheat::local_player.playerlook;
+
+							if (ang.y <= 90.f && ang.y <= 270.f) ang.y += 90.f;
+							else if (ang.y >= 270.f && ang.y <= 360.f) ang.y -= 270.f;
+
+							look->yaw(ang.x);
+							look->pitch(ang.y);
+							break;
 						}
-						else if (x >= 270.f && x <= 360.f)
+						case 1: // mouse
 						{
-							x -= 270.f;
-						}
-
-						look->pitch(x);
-					}
-					case 1: // mouse
-					{
-						ImVec2 screen;
-						if (unity::world_to_screen(head_pos, screen))
-						{
-
-							MoveMouse(screen.x, screen.y, 1920, 1080);
-
-						}
-					}
-					case 2: // silent
-					{
-						auto usable = cheat::local_player.equipment->usable();
-						if (usable)
-						{
-							auto usable_gun = (usable_gun_t*)usable;
-							auto bullets = usable_gun->bullets();
-							if (bullets)
+							ImVec2 screen;
+							if (unity::world_to_screen(head_pos, screen))
 							{
 
-								for (const auto& bullet : memory.read_vec<bullet_info_t*>(bullets->list(), bullets->size()))
-								{
-									auto calc_dir = head_pos - bullet->origin();
-									bullet->direction(calc_dir.normalized());
-								}
-
-								static auto center = ImVec2(c_overlay->m_pWidth / 2, c_overlay->m_pHeight / 2);
-								ImVec2 screen;
-								unity::world_to_screen(head_pos, screen);
-								ImRenderer->DrawLineEx(center, screen, ImColor(255, 255, 255, 255));
+								MoveMouse(screen.x, screen.y, 1920, 1080);
 
 							}
-
+							break;
 						}
-					}
+						case 2: // silent
+						{
+							auto usable = cheat::local_player.equipment->usable();
+							if (usable)
+							{
+								auto usable_gun = (usable_gun_t*)usable;
+								auto bullets = usable_gun->bullets();
+								if (bullets)
+								{
+
+									for (const auto& bullet : memory.read_vec<bullet_info_t*>(bullets->list(), bullets->size()))
+									{
+										auto calc_dir = head_pos - bullet->origin();
+										bullet->direction(calc_dir.normalized());
+									}
+
+									static auto center = ImVec2(c_overlay->m_pWidth / 2, c_overlay->m_pHeight / 2);
+									ImVec2 screen;
+									unity::world_to_screen(head_pos, screen);
+									ImRenderer->DrawLineEx(center, screen, ImColor(255, 255, 255, 255));
+
+								}
+
+							}
+							break;
+						}
 					}
 
 				}
@@ -608,17 +559,28 @@ int main()
 
 		}
 
-		if (config.always_day)
+		if (config.no_sway)
 		{
-			auto manager = lighting_manager_t::get_instance()->manager();
-			if (manager);
+			if (cheat::local_player.player)
 			{
-				manager->time(9999u);
-				manager->cycle(1u);
+				cheat::local_player.player->animator()->scope_sway(unity::vec3{ 0.f, 0.f, 0.f });
 			}
 		}
 
-
+		if (config.no_recoil || config.no_spread || config.instant_aim || config.sprint_in_shoot || config.no_bullet_drop)
+		{
+			auto gun = (item_gun_asset_t*)cheat::local_player.equipment->asset();
+			auto ballistics = gun->ballistic_information();
+			if (gun && ballistics.valid())	
+			{
+				if (config.no_recoil) gun->recoil(unity::vec4{ 0.f, 0.f, 0.f, 0.f });
+				if (config.no_spread) gun->base_spread(0.f);
+				if (config.instant_aim) gun->aim_duration(0.f);
+				if (config.sprint_in_shoot) gun->can_aim_during_sprint(true);
+				if (config.no_bullet_drop) gun->ballistic_drop(0.f);
+				gun->range(9999.f);
+			}
+		}
 
 		cheat::sync.unlock();
 #endif
@@ -647,3 +609,52 @@ int main()
 	return 1;
 
 }
+
+struct injection_data
+{
+
+	char username[255];
+	char expiry[255];
+	uintptr_t key;
+	unsigned int size;
+	char process_name[255];
+
+};
+
+#ifndef _DEBUG
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+
+	if (fdwReason == DLL_PROCESS_ATTACH)
+	{
+
+		injection_data* data = reinterpret_cast<injection_data*>(lpvReserved);
+
+		if (!lpvReserved)
+			reinterpret_cast<int>(nullptr)();
+
+		if (!data)
+			reinterpret_cast<int>(nullptr)();
+
+		if (data->size != 0x4500)
+			reinterpret_cast<int>(nullptr)();
+
+		if (strcmp(data->process_name, "ctfmon.exe"))
+			reinterpret_cast<int>(nullptr)();
+
+		config.username = data->username;
+
+		DisableThreadLibraryCalls(hinstDLL);
+		CreateThread(NULL, NULL, LPTHREAD_START_ROUTINE(main_thread), NULL, NULL, NULL);
+
+	}
+
+	return TRUE;
+
+}
+#else
+int main()
+{
+	main_thread();
+}
+#endif

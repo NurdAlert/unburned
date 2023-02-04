@@ -8,6 +8,7 @@
 #include "../ImGui/imgui.h"
 #include "ImGuiRender.h"
 #include "../ImGui/imgui_freetype.h"
+#include "../font.h"
 
 GRenderer* ImRenderer = nullptr;
 
@@ -28,7 +29,7 @@ void GRenderer::Initialize()
 	ImFontConfig imst;
 	//io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\verdana.TTF", 18.0f, &FontConfig, io.Fonts->GetGlyphRangesCyrillic());
 	if (!m_pFont)
-		m_pFont = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\tahoma.ttf", 22.f, &FontConfig, io.Fonts->GetGlyphRangesCyrillic());
+		m_pFont = io.Fonts->AddFontFromMemoryTTF(rawData, sizeof(rawData), 22.f, NULL, io.Fonts->GetGlyphRangesCyrillic());
 	if (!m_pNormal)
 		m_pNormal = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\tahoma.ttf", 11.f, &cfg, io.Fonts->GetGlyphRangesCyrillic());
 	if (!m_pBold)
@@ -85,24 +86,31 @@ float GRenderer::DrawTextGui(const std::string& text, const ImVec2& pos, float s
 	float y = 0.0f;
 	int i = 0;
 
+	ImFont* realfont{};
+
+	if (!fn)
+		realfont = m_pNormal;
+	else
+		realfont = fn;
+
 	while (std::getline(steam, line))
 	{
-		ImVec2 textSize = m_pNormal->CalcTextSizeA(size, FLT_MAX, 0.0f, line.c_str());
+		ImVec2 textSize = realfont->CalcTextSizeA(size, FLT_MAX, 0.0f, line.c_str());
 		if (center)
 		{
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x - textSize.x / 2.0f) + 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x - textSize.x / 2.0f) - 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x - textSize.x / 2.0f) + 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x - textSize.x / 2.0f) - 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2(pos.x - textSize.x / 2.0f, pos.y + textSize.y * i), ImGui::GetColorU32(ImVec4(color.Value.x, color.Value.y, color.Value.z, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x - textSize.x / 2.0f) + 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x - textSize.x / 2.0f) - 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x - textSize.x / 2.0f) + 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x - textSize.x / 2.0f) - 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2(pos.x - textSize.x / 2.0f, pos.y + textSize.y * i), ImGui::GetColorU32(ImVec4(color.Value.x, color.Value.y, color.Value.z, color.Value.w)), line.c_str());
 		}
 		else
 		{
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x) + 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x) - 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x) + 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2((pos.x) - 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
-			windowDrawList->AddText(m_pNormal, size, ImVec2(pos.x, pos.y + textSize.y * i), ImGui::GetColorU32(ImVec4(color.Value.x, color.Value.y, color.Value.z, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x) + 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x) - 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x) + 1, (pos.y + textSize.y * i) - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2((pos.x) - 1, (pos.y + textSize.y * i) + 1), ImGui::GetColorU32(ImVec4(0, 0, 0, color.Value.w)), line.c_str());
+			windowDrawList->AddText(realfont, size, ImVec2(pos.x, pos.y + textSize.y * i), ImGui::GetColorU32(ImVec4(color.Value.x, color.Value.y, color.Value.z, color.Value.w)), line.c_str());
 		}
 		y = pos.y + textSize.y * (i + 1);
 		i++;
@@ -127,7 +135,7 @@ void GRenderer::DrawLineEx(const ImVec2& from, const ImVec2& to, const ImColor& 
 
 void GRenderer::DrawCircle(const ImVec2& position, float radius, const ImColor& color, float thickness)
 {
-	ImGui::GetBackgroundDrawList()->AddCircle(position, radius, ImGui::GetColorU32(ImVec4(color.Value.x, color.Value.y, color.Value.z, color.Value.w)), 30, thickness);
+	ImGui::GetBackgroundDrawList()->AddCircle(position, radius, ImGui::GetColorU32(ImVec4(color.Value.x, color.Value.y, color.Value.z, color.Value.w)), 60, thickness);
 }
 
 void GRenderer::DrawCircleFilled(const ImVec2& position, float radius, const ImColor& color)
